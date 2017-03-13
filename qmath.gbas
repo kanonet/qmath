@@ -1,0 +1,299 @@
+// --------------------------------- //
+// Project: qmath
+// Start: Sunday, March 11, 2012
+// IDE Version: 10.283
+
+SYSTEMPOINTER TRUE
+
+LOCAL start = -1
+LOCAL stop = 1
+LOCAL stepping = 0.001
+LOCAL loops%=5
+init_SC()
+
+LOCAL value1, value2, tmp
+LOCAL mintime0, maxtime0, averagetime0, mini0, maxi0
+LOCAL mintime1, maxtime1, averagetime1, mini1, maxi1
+LOCAL mintime2, maxtime2, averagetime2, mini2, maxi2
+LOCAL maxerror, averageerror, mei, mev1, mev2
+LOCAL val1[], val2[]
+
+REPEAT
+
+	PRINT "Benchmarking...", 0,0
+	SHOWSCREEN
+	mintime0=9e999; maxtime0=0; averagetime0=0; maxerror=0; averageerror=0
+	mintime1=9e999; maxtime1=0; averagetime1=0
+	mintime2=9e999; maxtime2=0; averagetime2=0
+	DIM val1[400]
+	DIM val2[400]
+	FOR i=start TO stop STEP stepping
+		tmp=GETTIMERALL()
+		FOR j%=1 TO loops
+			value1=i								//<<<<<<------ empty loop (or what ever you want) here
+		NEXT
+		tmp=GETTIMERALL()-tmp
+		IF tmp>maxtime0
+			maxtime0=tmp
+			maxi0=i
+		ENDIF
+		IF tmp<mintime0
+			mintime0=tmp
+			mini0=i
+		ENDIF
+		INC averagetime0, tmp
+
+		tmp=GETTIMERALL()
+		FOR j%=1 TO loops
+			value1=ASIN(i)						//<<<<<<------ GLB SIN (or what ever you want) here
+		NEXT
+		tmp=GETTIMERALL()-tmp
+		IF tmp>maxtime1
+			maxtime1=tmp
+			maxi1=i
+		ENDIF
+		IF tmp<mintime1
+			mintime1=tmp
+			mini1=i
+		ENDIF
+		INC averagetime1, tmp
+
+		tmp=GETTIMERALL()
+		FOR j%=1 TO loops
+			value2=qASIN(i)						//<<<<<<------ qSIN (or what ever you want) here
+		NEXT
+		tmp=GETTIMERALL()-tmp
+		IF tmp>maxtime2
+			maxtime2=tmp
+			maxi2=i
+		ENDIF
+		IF tmp<mintime2
+			mintime2=tmp
+			mini2=i
+		ENDIF
+		INC averagetime2, tmp
+
+		val1[(i-start)/(stop-start)*399] = value1
+		val2[(i-start)/(stop-start)*399] = value2
+		IF value1 = 0 OR value2 = 0
+			value2 = ABS(value2-value1)*100
+		ELSE
+			value2 =  ABS(ABS(value2)/ABS(value1)-1)*100
+		ENDIF
+		IF value2>maxerror
+			maxerror = value2
+			mei = i
+			mev1 = value1
+			mev2 = value2
+		ENDIF
+		INC averageerror, value2
+	NEXT
+	averagetime0=averagetime0/((stop-start)/stepping+1)
+	averagetime1=averagetime1/((stop-start)/stepping+1)
+	averagetime2=averagetime2/((stop-start)/stepping+1)
+	averageerror=averageerror/((stop-start)/stepping+1)
+
+	PRINT "Testing from x="+start+" to x="+stop+" in steps of "+FORMAT$(0,5,stepping)+":", 0,0
+
+	PRINT "Emtpy loop", 0,40
+	PRINT "min:     "+FORMAT$(3,9,mintime0)+" ms  for x="+FORMAT$(3,5,mini0), 20,60
+	PRINT "max:     "+FORMAT$(3,9,maxtime0)+" ms  for x="+FORMAT$(3,5,maxi0), 20,80
+	PRINT "average: "+FORMAT$(3,9,averagetime0)+" ms", 20,100
+
+	PRINT "GLB SIN", 0,140
+	PRINT "min:     "+FORMAT$(3,9,mintime1)+" ms  for x="+FORMAT$(3,5,mini1), 20,160
+	PRINT "max:     "+FORMAT$(3,9,maxtime1)+" ms  for x="+FORMAT$(3,5,maxi1), 20,180
+	PRINT "average: "+FORMAT$(3,9,averagetime1)+" ms", 20,200
+
+	PRINT "qSIN", 0,240
+	PRINT "min:     "+FORMAT$(3,9,mintime2)+" ms  for x="+FORMAT$(3,5,mini2), 20,260
+	PRINT "max:     "+FORMAT$(3,9,maxtime2)+" ms  for x="+FORMAT$(3,5,maxi2), 20,280
+	PRINT "average: "+FORMAT$(3,9,averagetime2)+" ms", 20,300
+
+	PRINT "average error: "+averageerror+" %", 0,340
+	PRINT "max error: "+maxerror+" % at "+mei, 0,360
+	DEBUG "max error: "+maxerror+" % at "+FORMAT$(0,16,mei)+" "+mev1+" "+mev2+"\n"
+
+	PRINT "- Press any key for new calculations. -", 50,450
+
+	FOR i%=1 TO 398
+		LOCAL q1=val1[i-1]
+		LOCAL q2=val1[i]
+		LOCAL g1=val2[i-1]
+		LOCAL g2=val2[i]
+		DRAWLINE i, (q1/g1-1)*100000+350, i+1, (q2/g2-1)*100000+350, RGB(90,255,90)
+		SETPIXEL i, g2+350, RGB(90,90,255)
+		SETPIXEL i, q2+350, RGB(255,90,90)
+	NEXT
+
+	SHOWSCREEN
+
+	KEYWAIT
+
+UNTIL KEY(1)
+END
+
+
+FUNCTION foo:
+ENDFUNCTION
+
+INLINE
+	}	//  + + + A T T E N T I O N + + +
+		// int _a_ needs to be a n^2 value.
+		// Higher values give better precision
+		// but larger lookup tables as well!
+
+		const unsigned int __a__ = 131072 ;
+		const DGInt __b__ = (360.0 / __a__) ;
+		const unsigned int __c__ = (__a__ - 1) ;
+		DGInt _sin_tbl_[__c__] ;
+		DGInt _cos_tbl_[__c__] ;
+		const DGInt __d__ = (1 / __b__);
+	namespace __GLBASIC__ {
+ENDINLINE
+
+// ------------------------------------------------------------- //
+// ---  INIT_SIN_COS_TABLES  ---
+// ------------------------------------------------------------- //
+FUNCTION init_SC:
+	INLINE
+		for(int i=0; i < __c__; ++i)
+		{
+			_sin_tbl_[i] = SIN( i * __b__ ) ;
+			_cos_tbl_[i] = COS( i * __b__ ) ;
+		}
+	ENDINLINE
+ENDFUNCTION // INIT_SIN_COS_TABLES
+
+
+
+// ------------------------------------------------------------- //
+// ---  TCOS  ---
+// ------------------------------------------------------------- //
+FUNCTION tCOS: x	// in degrees
+	INLINE
+		return _cos_tbl_[ (int)(x * __d__) & __c__] ;
+	ENDINLINE
+ENDFUNCTION // TCOS
+
+
+
+// ------------------------------------------------------------- //
+// ---  TSIN  ---
+// ------------------------------------------------------------- //
+FUNCTION tSIN: x  // in degrees
+	INLINE
+		return _sin_tbl_[ (int)(x * __d__) & __c__] ;
+	ENDINLINE
+ENDFUNCTION // TSIN
+
+
+
+
+//FUNCTION createqatan:
+//	LOCAL a1, a2, m, n, z AS qqhelp , a[] AS qqhelp
+//	z.i=0.00001
+//	z.d$="0"
+//	DEBUG "CASE < "+z.i+"; x = "+z.d$+"\n"
+//	DIMPUSH a[], z
+//	FOR i=0 TO 89.9 STEP 0.1
+//		IF i>0.9 AND i<89 THEN INC i, 0.4
+//		IF i>5 AND i<88 THEN INC i, 0.5
+//		a1=i
+//		a2=i+0.1
+//		IF a2>89.9 THEN a2=89.95
+//		n=(a2+a1)/2
+//		m=(a2-a1)/(TAN(a2)-TAN(a1))
+//		n=(a1-TAN(a1)*m+n-TAN(n)*m)*0.5
+//		z.i=TAN(a2)
+//		z.d$=n+" + "+m+" * x"
+//		DEBUG a2+": CASE < "+z.i+"; x = "+z.d$+"\n"
+//		DIMPUSH a[], z
+//		SLEEP 10
+//	NEXT
+//	DEBUG LEN(a[])+"\n"
+//
+//	LOCAL r$[]
+//	qqhelp_split$(a[], r$[], "89.99")
+//
+//	DEBUG "\n\n\n\n\n"
+//	FOREACH t$ IN r$[]
+//		DEBUG CHR$(9)+t$
+//	NEXT
+//ENDFUNCTION
+//
+//FUNCTION createqasin:
+//	LOCAL a1, a2, m, n, z AS qqhelp , a[] AS qqhelp
+//	z.i=0.00001
+//	z.d$="0"
+//	DEBUG "CASE < "+z.i+"; x = "+z.d$+"\n"
+//	DIMPUSH a[], z
+//	FOR i=0 TO 89.9 STEP 0.1
+//		IF i>0.9 AND i<89 THEN INC i, 0.4
+//		IF i>5 AND i<88 THEN INC i, 0.5
+//		a1=i
+//		a2=i+0.1
+//		n=(a2+a1)/2
+//		m=(a2-a1)/(SIN(a2)-SIN(a1))
+//		n=(a1-SIN(a1)*m+n-SIN(n)*m)*0.5
+//		z.i=SIN(a2)
+//		z.d$=n+" + "+m+" * x"
+//		DEBUG a2+": CASE < "+z.i+"; x = "+z.d$+"\n"
+//		DIMPUSH a[], z
+//		SLEEP 10
+//	NEXT
+//	DEBUG LEN(a[])+"\n"
+//
+//	LOCAL r$[]
+//	qqhelp_split$(a[], r$[], "90")
+//
+//	DEBUG "\n\n\n\n\n"
+//	FOREACH t$ IN r$[]
+//		DEBUG CHR$(9)+t$
+//	NEXT
+//ENDFUNCTION
+//
+//FUNCTION qqhelp_split$: a[] AS qqhelp, r$[], od$=""
+//	IF a.count = 1
+//		IF od$=""
+//			DIMPUSH r$[], "x = "+a[0].d$+"\n"
+//		ELSE
+//			DIMPUSH r$[], "x = IIF( x < "+a[0].i+", "+a[0].d$+", "+od$+" )\n"
+//		ENDIF
+//	ELSE
+//		LOCAL l AS qqhelp, b[] AS qqhelp, c[] AS qqhelp, r2$[]
+//		l.i=a[a.count*0.5].i
+//		FOREACH e IN a[]
+//			IF e.i<l.i
+//				DIMPUSH b[], e
+//			ELSEIF e.i=l.i
+//				l.d$=e.d$
+//			ELSE
+//				DIMPUSH c[], e
+//			ENDIF
+//		NEXT
+//
+//		DIMPUSH r$[], "IF x < "+l.i+"\n"
+//		qqhelp_split$(b[], r2$[], l.d$)
+//		FOREACH t$ IN r2$[]
+//			DIMPUSH r$[], CHR$(9)+t$
+//		NEXT
+//		IF c.count>0
+//			DIM r2$[0]
+//			qqhelp_split$(c[], r2$[], od$)
+//			DIMPUSH r$[], "ELSE\n"
+//			FOREACH t$ IN r2$[]
+//				DIMPUSH r$[], CHR$(9)+t$
+//			NEXT
+//		ELSEIF od$<>""
+//			DIMPUSH r$[], "ELSE\n"
+//			DIMPUSH r$[], CHR$(9)+"x = "+od$+"\n"
+//		ENDIF
+//		DIMPUSH r$[], "ENDIF\n"
+//	ENDIF
+//	RETURN r$[]
+//ENDFUNCTION
+//
+//TYPE qqhelp
+//	i; d$
+//ENDTYPE
